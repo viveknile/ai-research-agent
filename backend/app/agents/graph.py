@@ -2,15 +2,18 @@ from langgraph.graph import END, START, StateGraph
 
 from app.agents.state import ResearchState
 from app.agents.nodes.analyze_query import analyze_query
+from app.agents.nodes.generate_queries import generate_queries
 
 
 def build_research_graph():
     graph = StateGraph(ResearchState)
 
     graph.add_node("analyze_query", analyze_query)
+    graph.add_node("generate_queries", generate_queries)
 
     graph.add_edge(START, "analyze_query")
-    graph.add_edge("analyze_query", END)
+    graph.add_edge("analyze_query", "generate_queries")
+    graph.add_edge("generate_queries", END)
 
     return graph.compile()
 

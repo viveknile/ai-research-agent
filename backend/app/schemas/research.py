@@ -10,6 +10,10 @@ class ResearchPlan(BaseModel):
     search_topics: list[str]
 
 
+class SearchQueries(BaseModel):
+    queries: list[str]
+
+
 class ResearchRequest(BaseModel):
     query: str = Field(
         min_length=5,
@@ -17,8 +21,3 @@ class ResearchRequest(BaseModel):
         description="Research question to investigate",
     )
     depth: Literal["quick", "standard", "deep"] = "standard"
-
-
-class ResearchResponse(BaseModel):
-    research_id: UUID
-    status: str

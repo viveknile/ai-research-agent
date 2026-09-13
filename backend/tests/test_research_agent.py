@@ -18,3 +18,8 @@ async def test_research_graph():
     assert research_plan["objective"]
     assert research_plan["research_questions"]
     assert research_plan["search_topics"]
+
+    search_queries = result["search_queries"]
+
+    assert search_queries
+    assert len(search_queries) >= 5
