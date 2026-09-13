@@ -1,0 +1,20 @@
+import pytest
+
+from app.agents.graph import research_graph
+
+
+@pytest.mark.asyncio
+async def test_research_graph():
+    initial_state = {
+        "query": "Compare AI agent frameworks in 2026",
+    }
+
+    result = await research_graph.ainvoke(initial_state)
+
+    assert result["query"] == "Compare AI agent frameworks in 2026"
+
+    research_plan = result["research_plan"]
+
+    assert research_plan["objective"]
+    assert research_plan["research_questions"]
+    assert research_plan["search_topics"]
