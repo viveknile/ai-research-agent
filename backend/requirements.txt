@@ -1,0 +1,28 @@
+# Web API
+fastapi
+uvicorn[standard]
+
+# Configuration & validation
+pydantic
+pydantic-settings
+
+# AI / Agent orchestration
+langgraph
+langchain
+langchain-google-genai
+
+# Web research
+tavily-python
+httpx
+beautifulsoup4
+
+# Database
+sqlalchemy
+asyncpg
+psycopg
+pgvector
+
+# Testing & code quality
+pytest
+pytest-asyncio
+ruff
