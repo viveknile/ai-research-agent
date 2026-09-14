@@ -21,3 +21,11 @@ class ResearchRequest(BaseModel):
         description="Research question to investigate",
     )
     depth: Literal["quick", "standard", "deep"] = "standard"
+
+class SearchResult(BaseModel):
+    title: str
+    url: str
+    snippet: str
+    content: str | None = None
+    published_date: str | None = None
+    domain: str
