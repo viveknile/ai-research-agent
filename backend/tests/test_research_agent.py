@@ -23,3 +23,13 @@ async def test_research_graph():
 
     assert search_queries
     assert len(search_queries) >= 5
+
+    sources = result["sources"]
+
+    assert sources
+    assert len(sources) > 0
+
+    for source in sources:
+        assert source["title"]
+        assert source["url"]
+        assert source["domain"]
