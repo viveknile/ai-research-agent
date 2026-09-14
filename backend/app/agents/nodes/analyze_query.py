@@ -6,7 +6,9 @@ from app.schemas.research import ResearchPlan
 gemini_provider = GeminiProvider()
 
 
-async def analyze_query(state: ResearchState) -> ResearchState:
+async def analyze_query(
+    state: ResearchState,
+) -> ResearchState:
 
     query = state["query"]
 

@@ -9,9 +9,11 @@ async def test_http_fetch():
     provider = HTTPFetchProvider()
 
     document = await provider.fetch(
-        "https://example.com"
+        url="https://example.com",
+        source_id="test-source",
     )
 
+    assert document.source_id == "test-source"
     assert document.url == "https://example.com"
     assert document.title
     assert document.content

@@ -11,9 +11,11 @@ async def fetch_sources(state: ResearchState) -> ResearchState:
     documents = []
 
     for source in sources[:10]:
+
         try:
             document = await fetch_provider.fetch(
-                source["url"]
+                url=source["url"],
+                source_id=source["id"],
             )
 
             documents.append(

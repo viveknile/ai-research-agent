@@ -17,6 +17,7 @@ async def test_tavily_search():
     assert len(results) <= 3
 
     for result in results:
+        assert result.id
         assert result.title
         assert result.url
         assert result.domain

@@ -1,3 +1,4 @@
+import hashlib
 from urllib.parse import urlparse
 
 from tavily import TavilyClient
@@ -32,8 +33,13 @@ class TavilySearchProvider(SearchProvider):
 
             domain = urlparse(url).netloc
 
+            source_id = hashlib.sha256(
+                url.encode("utf-8")
+            ).hexdigest()[:16]
+
             results.append(
                 SearchResult(
+                    id=source_id,
                     title=item.get("title", ""),
                     url=url,
                     snippet=item.get("content", ""),

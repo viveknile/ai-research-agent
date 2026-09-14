@@ -23,6 +23,7 @@ class ResearchRequest(BaseModel):
     depth: Literal["quick", "standard", "deep"] = "standard"
 
 class SearchResult(BaseModel):
+    id: str
     title: str
     url: str
     snippet: str
@@ -30,8 +31,30 @@ class SearchResult(BaseModel):
     published_date: str | None = None
     domain: str
 
+
 class WebDocument(BaseModel):
+    source_id: str
     url: str
     title: str
     content: str
     domain: str
+
+class Evidence(BaseModel):
+    id: str
+    source_id: str
+    claim: str
+    evidence_text: str
+    confidence: float = Field(
+        ge=0.0,
+        le=1.0,
+    )
+
+
+class Finding(BaseModel):
+    id: str
+    statement: str
+    confidence: float = Field(
+        ge=0.0,
+        le=1.0,
+    )
+    supporting_evidence_ids: list[str]

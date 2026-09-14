@@ -18,6 +18,10 @@ class SearchProvider(ABC):
 class FetchProvider(ABC):
 
     @abstractmethod
-    async def fetch(self, url: str) -> WebDocument:
+    async def fetch(
+        self,
+        url: str,
+        source_id: str,
+    ) -> WebDocument:
         """Fetch and extract readable content from a webpage."""
         raise NotImplementedError
