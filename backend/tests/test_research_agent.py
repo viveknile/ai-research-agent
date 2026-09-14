@@ -33,3 +33,14 @@ async def test_research_graph():
         assert source["title"]
         assert source["url"]
         assert source["domain"]
+
+    documents = result["documents"]
+
+    assert documents
+    assert len(documents) > 0
+
+    for document in documents:
+        assert document["url"]
+        assert document["title"]
+        assert document["content"]
+        assert document["domain"]

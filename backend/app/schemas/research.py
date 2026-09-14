@@ -29,3 +29,9 @@ class SearchResult(BaseModel):
     content: str | None = None
     published_date: str | None = None
     domain: str
+
+class WebDocument(BaseModel):
+    url: str
+    title: str
+    content: str
+    domain: str
