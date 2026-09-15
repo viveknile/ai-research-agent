@@ -43,18 +43,22 @@ class HTTPFetchProvider(FetchProvider):
             "html.parser",
         )
 
+        # Remove elements that usually contain
+        # navigation, scripts, styling, or page chrome.
         for element in soup(
             ["script", "style", "nav", "footer", "header"]
         ):
             element.decompose()
 
-        # Try to extract the webpage title.
+        # --------------------------------------------------
+        # Extract title
+        # --------------------------------------------------
+
         title = ""
 
         if soup.title and soup.title.string:
             title = soup.title.string.strip()
 
-        # If <title> is unavailable, try the main heading.
         if not title:
             heading = soup.find("h1")
 
@@ -64,14 +68,26 @@ class HTTPFetchProvider(FetchProvider):
                     strip=True,
                 )
 
-        # Final fallback: use the hostname.
         if not title:
             title = urlparse(url).netloc
+
+        # --------------------------------------------------
+        # Extract page content
+        # --------------------------------------------------
 
         content = soup.get_text(
             separator=" ",
             strip=True,
         )
+
+        # --------------------------------------------------
+        # Validate extracted content
+        # --------------------------------------------------
+
+        if not content:
+            raise ValueError(
+                "Could not extract readable content from webpage."
+            )
 
         domain = urlparse(url).netloc
 

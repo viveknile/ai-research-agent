@@ -4,6 +4,7 @@ from app.ai.base import AIProvider
 from app.schemas.research import (
     Evidence,
     Finding,
+    ResearchGaps,
     ResearchPlan,
     SearchQueries,
 )
@@ -71,6 +72,11 @@ class MockAIProvider(AIProvider):
                 supporting_evidence_ids=[
                     "mock-evidence-1",
                 ],
+            )
+
+        if schema is ResearchGaps:
+            return ResearchGaps(
+                research_gaps=[]
             )
 
         raise ValueError(

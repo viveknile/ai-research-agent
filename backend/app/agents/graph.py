@@ -7,10 +7,15 @@ from app.agents.nodes.search_web import search_web
 from app.agents.nodes.fetch_sources import fetch_sources
 from app.agents.nodes.extract_evidence import extract_evidence
 from app.agents.nodes.analyze_findings import analyze_findings
+from app.agents.nodes.check_gaps import check_gaps
 
 
 def build_research_graph():
     graph = StateGraph(ResearchState)
+
+    # --------------------------------------------------
+    # Nodes
+    # --------------------------------------------------
 
     graph.add_node(
         "analyze_query",
@@ -41,6 +46,15 @@ def build_research_graph():
         "analyze_findings",
         analyze_findings,
     )
+
+    graph.add_node(
+        "check_gaps",
+        check_gaps,
+    )
+
+    # --------------------------------------------------
+    # Edges
+    # --------------------------------------------------
 
     graph.add_edge(
         START,
@@ -74,6 +88,11 @@ def build_research_graph():
 
     graph.add_edge(
         "analyze_findings",
+        "check_gaps",
+    )
+
+    graph.add_edge(
+        "check_gaps",
         END,
     )
 

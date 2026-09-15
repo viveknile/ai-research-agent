@@ -14,14 +14,6 @@ class SearchQueries(BaseModel):
     queries: list[str]
 
 
-class ResearchRequest(BaseModel):
-    query: str = Field(
-        min_length=5,
-        max_length=1000,
-        description="Research question to investigate",
-    )
-    depth: Literal["quick", "standard", "deep"] = "standard"
-
 class SearchResult(BaseModel):
     id: str
     title: str
@@ -38,6 +30,7 @@ class WebDocument(BaseModel):
     title: str
     content: str
     domain: str
+
 
 class Evidence(BaseModel):
     id: str
@@ -58,3 +51,21 @@ class Finding(BaseModel):
         le=1.0,
     )
     supporting_evidence_ids: list[str]
+
+
+class ResearchGaps(BaseModel):
+    research_gaps: list[str]
+
+
+class ResearchRequest(BaseModel):
+    query: str = Field(
+        min_length=5,
+        max_length=1000,
+        description="Research question to investigate",
+    )
+    depth: Literal["quick", "standard", "deep"] = "standard"
+
+
+class ResearchResponse(BaseModel):
+    research_id: UUID
+    status: str

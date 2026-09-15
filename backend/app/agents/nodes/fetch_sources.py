@@ -7,27 +7,50 @@ fetch_provider = HTTPFetchProvider()
 
 async def fetch_sources(state: ResearchState) -> ResearchState:
     sources = state.get("sources", [])
+    existing_documents = state.get("documents", [])
 
-    documents = []
+    # Keep track of sources that have already been fetched.
+    fetched_source_ids = {
+        document["source_id"]
+        for document in existing_documents
+    }
 
-    for source in sources[:10]:
+    new_documents = []
+    errors = list(state.get("errors", []))
+
+    for source in sources:
+
+        source_id = source["id"]
+
+        # Skip sources that were already fetched.
+        if source_id in fetched_source_ids:
+            continue
 
         try:
             document = await fetch_provider.fetch(
                 url=source["url"],
-                source_id=source["id"],
+                source_id=source_id,
             )
 
-            documents.append(
+            new_documents.append(
                 document.model_dump()
             )
 
+            fetched_source_ids.add(source_id)
+
         except Exception as exc:
-            print(
-                f"Failed to fetch {source['url']}: {exc}"
+
+            error_message = (
+                f"Failed to fetch "
+                f"{source['url']}: {exc}"
             )
+
+            errors.append(error_message)
+
+            print(error_message)
 
     return {
         **state,
-        "documents": documents,
+        "documents": existing_documents + new_documents,
+        "errors": errors,
     }

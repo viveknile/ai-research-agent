@@ -5,6 +5,7 @@ from app.agents.nodes import analyze_query
 from app.agents.nodes import generate_queries
 from app.agents.nodes import extract_evidence
 from app.agents.nodes import analyze_findings
+from app.agents.nodes import check_gaps
 from app.ai.mock import MockAIProvider
 
 
@@ -13,7 +14,10 @@ async def test_research_graph(monkeypatch):
 
     mock_provider = MockAIProvider()
 
-    # Replace Gemini with the mock provider
+    # --------------------------------------------------
+    # Replace Gemini with Mock AI
+    # --------------------------------------------------
+
     monkeypatch.setattr(
         analyze_query,
         "gemini_provider",
@@ -38,9 +42,23 @@ async def test_research_graph(monkeypatch):
         mock_provider,
     )
 
+    monkeypatch.setattr(
+        check_gaps,
+        "gemini_provider",
+        mock_provider,
+    )
+
+    # --------------------------------------------------
+    # Initial Research State
+    # --------------------------------------------------
+
     initial_state = {
         "query": "Compare AI agent frameworks in 2026",
     }
+
+    # --------------------------------------------------
+    # Run Research Graph
+    # --------------------------------------------------
 
     result = await research_graph.ainvoke(
         initial_state
@@ -152,3 +170,14 @@ async def test_research_graph(monkeypatch):
         assert finding[
             "supporting_evidence_ids"
         ]
+
+    # --------------------------------------------------
+    # Research Gaps
+    # --------------------------------------------------
+
+    research_gaps = result["research_gaps"]
+
+    assert isinstance(
+        research_gaps,
+        list,
+    )

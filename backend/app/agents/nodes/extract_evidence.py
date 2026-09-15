@@ -13,11 +13,24 @@ async def extract_evidence(
 ) -> ResearchState:
 
     documents = state.get("documents", [])
+    existing_evidence = state.get("evidence", [])
 
-    all_evidence = []
+    # Keep track of documents that already have evidence.
+    processed_source_ids = {
+        item["source_id"]
+        for item in existing_evidence
+    }
+
+    new_evidence = []
     errors = list(state.get("errors", []))
 
     for document in documents:
+
+        source_id = document["source_id"]
+
+        # Skip documents that were already processed.
+        if source_id in processed_source_ids:
+            continue
 
         prompt = f"""
 You are a research evidence extraction assistant.
@@ -54,11 +67,13 @@ For the evidence:
             )
 
             evidence.id = str(uuid.uuid4())
-            evidence.source_id = document["source_id"]
+            evidence.source_id = source_id
 
-            all_evidence.append(
+            new_evidence.append(
                 evidence.model_dump()
             )
+
+            processed_source_ids.add(source_id)
 
         except Exception as exc:
 
@@ -73,6 +88,6 @@ For the evidence:
 
     return {
         **state,
-        "evidence": all_evidence,
+        "evidence": existing_evidence + new_evidence,
         "errors": errors,
     }
