@@ -1,56 +1,92 @@
+import asyncio
+
 from app.agents.state import ResearchState
-from app.tools.fetch import HTTPFetchProvider
+from app.tools.fetch_provider import get_fetch_provider
 
 
-fetch_provider = HTTPFetchProvider()
+fetch_provider = get_fetch_provider()
+
+MAX_CONCURRENT_FETCHES = 5
+MAX_TOTAL_DOCUMENTS = 12
 
 
-async def fetch_sources(state: ResearchState) -> ResearchState:
+async def _fetch_single_source(
+    source: dict,
+):
+    source_id = source["id"]
+    url = source["url"]
+
+    try:
+        document = await fetch_provider.fetch(
+            url=url,
+            source_id=source_id,
+        )
+
+        return document
+
+    except Exception as exc:
+        print(
+            "[ResearchPilot] Source fetch failed: "
+            f"{url} -> {exc}"
+        )
+
+        return None
+
+
+async def fetch_sources(state: ResearchState) -> dict:
     sources = state.get("sources", [])
-    existing_documents = state.get("documents", [])
-
-    # Keep track of sources that have already been fetched.
-    fetched_source_ids = {
-        document["source_id"]
-        for document in existing_documents
-    }
-
-    new_documents = []
     errors = list(state.get("errors", []))
 
-    for source in sources:
+    print(
+        "[ResearchPilot] Starting source fetching for "
+        f"{len(sources)} sources..."
+    )
 
+    unique_sources = []
+    seen_source_ids = set()
+
+    for source in sources:
         source_id = source["id"]
 
-        # Skip sources that were already fetched.
-        if source_id in fetched_source_ids:
+        if source_id in seen_source_ids:
             continue
 
-        try:
-            document = await fetch_provider.fetch(
-                url=source["url"],
-                source_id=source_id,
-            )
+        seen_source_ids.add(source_id)
+        unique_sources.append(source)
 
-            new_documents.append(
-                document.model_dump()
-            )
+        if len(unique_sources) >= MAX_TOTAL_DOCUMENTS:
+            break
 
-            fetched_source_ids.add(source_id)
+    semaphore = asyncio.Semaphore(
+        MAX_CONCURRENT_FETCHES
+    )
 
-        except Exception as exc:
+    async def limited_fetch(source: dict):
+        async with semaphore:
+            return await _fetch_single_source(source)
 
-            error_message = (
-                f"Failed to fetch "
-                f"{source['url']}: {exc}"
-            )
+    documents = await asyncio.gather(
+        *[
+            limited_fetch(source)
+            for source in unique_sources
+        ]
+    )
 
-            errors.append(error_message)
+    valid_documents = [
+        document
+        for document in documents
+        if document is not None
+    ]
 
-            print(error_message)
+    print(
+        "[ResearchPilot] Source fetching completed. "
+        f"Fetched {len(valid_documents)} documents."
+    )
 
     return {
-        **state,
-        "documents": existing_documents + new_documents,
+        "documents": [
+            document.model_dump()
+            for document in valid_documents
+        ],
         "errors": errors,
     }

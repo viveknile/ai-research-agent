@@ -42,7 +42,6 @@ async def get_research(
     )
 
     if research is None:
-
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Research not found.",

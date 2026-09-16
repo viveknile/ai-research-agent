@@ -3,7 +3,6 @@ from typing import TypedDict
 
 class ResearchState(TypedDict, total=False):
     research_id: str
-
     query: str
 
     research_plan: dict
@@ -21,9 +20,9 @@ class ResearchState(TypedDict, total=False):
     research_gaps: list[str]
 
     iteration: int
-
     max_iterations: int
 
+    report_draft: dict
     final_report: dict
 
     errors: list[str]

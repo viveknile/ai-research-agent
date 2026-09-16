@@ -8,13 +8,34 @@ from app.agents.nodes.fetch_sources import fetch_sources
 from app.agents.nodes.extract_evidence import extract_evidence
 from app.agents.nodes.analyze_findings import analyze_findings
 from app.agents.nodes.check_gaps import check_gaps
+from app.agents.nodes.synthesize_report import synthesize_report
+from app.agents.nodes.generate_report import generate_report
+
+
+def route_after_gap_check(state: ResearchState) -> str:
+    gaps = state.get("research_gaps", [])
+
+    iteration = state.get(
+        "iteration",
+        1,
+    )
+
+    max_iterations = state.get(
+        "max_iterations",
+        3,
+    )
+
+    if gaps and iteration < max_iterations:
+        return "research_more"
+
+    return "finish"
 
 
 def build_research_graph():
     graph = StateGraph(ResearchState)
 
     # --------------------------------------------------
-    # Nodes
+    # Research phase
     # --------------------------------------------------
 
     graph.add_node(
@@ -53,7 +74,21 @@ def build_research_graph():
     )
 
     # --------------------------------------------------
-    # Edges
+    # Report phase
+    # --------------------------------------------------
+
+    graph.add_node(
+        "synthesize_report",
+        synthesize_report,
+    )
+
+    graph.add_node(
+        "generate_report",
+        generate_report,
+    )
+
+    # --------------------------------------------------
+    # Initial flow
     # --------------------------------------------------
 
     graph.add_edge(
@@ -91,8 +126,30 @@ def build_research_graph():
         "check_gaps",
     )
 
-    graph.add_edge(
+    # --------------------------------------------------
+    # Research loop
+    # --------------------------------------------------
+
+    graph.add_conditional_edges(
         "check_gaps",
+        route_after_gap_check,
+        {
+            "research_more": "generate_queries",
+            "finish": "synthesize_report",
+        },
+    )
+
+    # --------------------------------------------------
+    # Report generation
+    # --------------------------------------------------
+
+    graph.add_edge(
+        "synthesize_report",
+        "generate_report",
+    )
+
+    graph.add_edge(
+        "generate_report",
         END,
     )
 

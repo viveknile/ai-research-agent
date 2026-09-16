@@ -1,94 +1,95 @@
 from app.agents.state import ResearchState
-from app.ai.gemini import GeminiProvider
+from app.ai.provider import get_ai_provider
 from app.schemas.research import ResearchGaps
 
 
-gemini_provider = GeminiProvider()
+ai_provider = get_ai_provider()
 
 
-async def check_gaps(
-    state: ResearchState,
-) -> ResearchState:
-
+async def check_gaps(state: ResearchState) -> dict:
+    query = state["query"]
+    research_plan = state.get("research_plan", {})
     findings = state.get("findings", [])
+    evidence = state.get("evidence", [])
+    iteration = state.get("iteration", 1)
 
-    if not findings:
-        return {
-            **state,
-            "research_gaps": [
-                "No research findings were produced."
-            ],
-        }
+    print(
+        f"[ResearchPilot] Checking research gaps "
+        f"(iteration {iteration})..."
+    )
 
-    findings_text = "\n\n".join(
-        [
-            (
-                f"Finding ID: {finding['id']}\n"
-                f"Statement: {finding['statement']}\n"
-                f"Confidence: {finding['confidence']}\n"
-                f"Supporting evidence: "
-                f"{finding['supporting_evidence_ids']}"
-            )
-            for finding in findings
-        ]
+    findings_text = "\n".join(
+        f"{index + 1}. {finding['statement']}"
+        for index, finding in enumerate(findings)
+    )
+
+    evidence_text = "\n".join(
+        (
+            f"{index + 1}. "
+            f"{item['claim']}: "
+            f"{item['evidence_text']}"
+        )
+        for index, item in enumerate(evidence)
     )
 
     prompt = f"""
-You are a research quality-control assistant.
+Determine whether the current research contains important gaps
+that prevent confidently answering the original research question.
 
-Determine whether the research contains enough information
-to answer the user's question.
+Original research question:
 
-Research question:
-{state["query"]}
+{query}
 
-Research findings:
+Research plan:
+
+{research_plan}
+
+Current research round:
+
+{iteration}
+
+Current findings:
 
 {findings_text}
 
-Identify any important gaps in the research.
+Current evidence:
 
-A gap means:
+{evidence_text}
+
+Identify ONLY meaningful research gaps.
+
+A meaningful gap is something important that is still missing,
+such as:
+
 - An important part of the question is unanswered.
-- Evidence is too weak to support an important conclusion.
-- Important aspects of the research question have not been investigated.
-- More sources are needed to increase confidence.
+- A major comparison is missing.
+- Important evidence is insufficient.
+- Important current information is missing.
 
-Do NOT create gaps for minor details.
+If the research is already sufficient, return:
 
-If the research is sufficient, return an empty list.
+{{
+    "research_gaps": []
+}}
 
-Return only important research gaps.
+Return ONLY the actual JSON data.
 """
 
-    try:
+    print(
+        "[ResearchPilot] Sending gap-check request "
+        "to OpenRouter..."
+    )
 
-        result = await gemini_provider.generate_structured(
-            prompt,
-            ResearchGaps,
-        )
+    result = await ai_provider.generate_structured(
+        prompt,
+        ResearchGaps,
+    )
 
-        return {
-            **state,
-            "research_gaps": result.research_gaps,
-        }
+    print(
+        "[ResearchPilot] Gap check completed. "
+        f"Gaps found: {result.research_gaps}"
+    )
 
-    except Exception as exc:
-
-        errors = list(
-            state.get("errors", [])
-        )
-
-        errors.append(
-            f"Gap analysis failed: {exc}"
-        )
-
-        print(
-            f"Gap analysis failed: {exc}"
-        )
-
-        return {
-            **state,
-            "research_gaps": [],
-            "errors": errors,
-        }
+    return {
+        "research_gaps": result.research_gaps
+    }

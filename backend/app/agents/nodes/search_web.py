@@ -1,63 +1,93 @@
+import asyncio
+
 from app.agents.state import ResearchState
-from app.tools.search import TavilySearchProvider
+from app.tools.provider import get_search_provider
 
 
-tavily_provider = TavilySearchProvider()
+search_provider = get_search_provider()
+
+MAX_RESULTS_PER_QUERY = 3
+MAX_TOTAL_SOURCES = 12
+MAX_CONCURRENT_SEARCHES = 4
 
 
-async def search_web(state: ResearchState) -> ResearchState:
+async def _search_single_query(
+    query: str,
+) -> tuple[str, list]:
+    try:
+        results = await search_provider.search(
+            query=query,
+            max_results=MAX_RESULTS_PER_QUERY,
+        )
+
+        return query, results
+
+    except Exception as exc:
+        print(
+            "[ResearchPilot] Search failed for "
+            f"'{query}': {exc}"
+        )
+
+        return query, []
+
+
+async def search_web(state: ResearchState) -> dict:
     search_queries = state.get("search_queries", [])
-    existing_sources = state.get("sources", [])
+    errors = list(state.get("errors", []))
 
-    # Keep track of URLs we already have.
-    existing_urls = {
+    print(
+        "[ResearchPilot] Starting web search for "
+        f"{len(search_queries)} queries..."
+    )
+
+    seen_urls = {
         source["url"]
-        for source in existing_sources
+        for source in state.get("sources", [])
+        if source.get("url")
     }
 
-    new_sources = []
+    sources: list[dict] = []
 
-    for query in search_queries:
+    semaphore = asyncio.Semaphore(
+        MAX_CONCURRENT_SEARCHES
+    )
 
-        try:
-            results = await tavily_provider.search(
-                query=query,
-                max_results=5,
-            )
+    async def limited_search(query: str):
+        async with semaphore:
+            return await _search_single_query(query)
 
-            for result in results:
+    results_by_query = await asyncio.gather(
+        *[
+            limited_search(query)
+            for query in search_queries
+        ]
+    )
 
-                # Skip duplicate URLs.
-                if result.url in existing_urls:
-                    continue
+    for query, results in results_by_query:
+        print(
+            "[ResearchPilot] Search completed: "
+            f"'{query}' -> {len(results)} results"
+        )
 
-                new_sources.append(
-                    result.model_dump()
-                )
+        for result in results:
+            if result.url in seen_urls:
+                continue
 
-                existing_urls.add(result.url)
+            seen_urls.add(result.url)
+            sources.append(result.model_dump())
 
-        except Exception as exc:
+            if len(sources) >= MAX_TOTAL_SOURCES:
+                break
 
-            errors = list(
-                state.get("errors", [])
-            )
+        if len(sources) >= MAX_TOTAL_SOURCES:
+            break
 
-            errors.append(
-                f"Web search failed for '{query}': {exc}"
-            )
-
-            print(
-                f"Web search failed for '{query}': {exc}"
-            )
-
-            return {
-                **state,
-                "sources": existing_sources + new_sources,
-                "errors": errors,
-            }
+    print(
+        "[ResearchPilot] Web search completed. "
+        f"Collected {len(sources)} unique sources."
+    )
 
     return {
-        **state,
-        "sources": existing_sources + new_sources,
+        "sources": sources,
+        "errors": errors,
     }

@@ -5,9 +5,22 @@ class Settings(BaseSettings):
     app_name: str = "AI Research Agent"
     environment: str = "development"
 
+    research_mode: str = "mock"
+
+    # AI Provider
+    ai_provider: str = "openrouter"
+
+    # OpenRouter
+    openrouter_api_key: str = ""
+    openrouter_model: str = "openrouter/free"
+
+    # Gemini
     gemini_api_key: str = ""
+
+    # Tavily
     tavily_api_key: str = ""
 
+    # Database - currently unused
     database_url: str = ""
 
     allowed_origins: str = "http://localhost:3000"

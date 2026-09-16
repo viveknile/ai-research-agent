@@ -1,93 +1,155 @@
-import uuid
+from uuid import uuid4
 
 from app.agents.state import ResearchState
-from app.ai.gemini import GeminiProvider
-from app.schemas.research import Evidence
+from app.ai.provider import get_ai_provider
+from app.schemas.research import EvidenceExtraction
 
 
-gemini_provider = GeminiProvider()
+ai_provider = get_ai_provider()
+
+MAX_DOCUMENTS = 12
+MAX_CONTENT_PER_DOCUMENT = 5000
 
 
-async def extract_evidence(
-    state: ResearchState,
-) -> ResearchState:
-
+async def extract_evidence(state: ResearchState) -> dict:
     documents = state.get("documents", [])
-    existing_evidence = state.get("evidence", [])
-
-    # Keep track of documents that already have evidence.
-    processed_source_ids = {
-        item["source_id"]
-        for item in existing_evidence
-    }
-
-    new_evidence = []
     errors = list(state.get("errors", []))
 
+    print(
+        "[ResearchPilot] Starting evidence extraction "
+        f"for {len(documents)} documents..."
+    )
+
+    if not documents:
+        print(
+            "[ResearchPilot] No documents available "
+            "for evidence extraction."
+        )
+
+        return {
+            "evidence": [],
+            "errors": errors,
+        }
+
+    documents = documents[:MAX_DOCUMENTS]
+
+    documents_text_parts = []
+
     for document in documents:
+        content = document.get("content", "")
 
-        source_id = document["source_id"]
+        if len(content) > MAX_CONTENT_PER_DOCUMENT:
+            content = content[:MAX_CONTENT_PER_DOCUMENT]
 
-        # Skip documents that were already processed.
-        if source_id in processed_source_ids:
-            continue
+            content += (
+                "\n\n[Document content truncated "
+                "for research processing.]"
+            )
 
-        prompt = f"""
-You are a research evidence extraction assistant.
+        documents_text_parts.append(
+            f"""
+DOCUMENT ID: {document["source_id"]}
+TITLE: {document["title"]}
+URL: {document["url"]}
+DOMAIN: {document["domain"]}
 
-Read the following webpage and extract the most important
-evidence relevant to this research question.
+CONTENT:
+{content}
+"""
+        )
+
+    documents_text = "\n\n".join(
+        documents_text_parts
+    )
+
+    prompt = f"""
+You are an evidence extraction assistant for ResearchPilot.
+
+Extract important factual evidence from the supplied research
+documents.
 
 Research question:
+
 {state["query"]}
 
-Webpage title:
-{document["title"]}
+Research documents:
 
-Webpage URL:
-{document["url"]}
+{documents_text}
 
-Webpage content:
-{document["content"]}
+Requirements:
 
-Extract useful factual claims supported by this webpage.
+1. Extract useful factual claims from the documents.
+2. Every claim must be supported by the supplied document.
+3. Use the exact DOCUMENT ID as the source_id.
+4. Include supporting evidence text from the document.
+5. Give every evidence item a confidence score between 0 and 1.
+6. Do not invent information.
+7. Ignore documents that contain no useful evidence.
+8. Extract multiple evidence items when appropriate.
+9. Keep evidence concise and factual.
+10. Prefer a small number of high-quality evidence items over
+    many repetitive items.
 
-For the evidence:
-- Write a concise factual claim.
-- Provide the supporting information from the webpage.
-- Assign a confidence score from 0.0 to 1.0.
-- Only extract information that is actually supported by the webpage.
+Return only actual JSON data matching the requested schema.
+Do not return the JSON schema itself.
 """
 
-        try:
+    try:
+        print(
+            "[ResearchPilot] Sending evidence extraction "
+            "request to OpenRouter..."
+        )
 
-            evidence = await gemini_provider.generate_structured(
-                prompt,
-                Evidence,
+        result = await ai_provider.generate_structured(
+            prompt,
+            EvidenceExtraction,
+        )
+
+        valid_source_ids = {
+            document["source_id"]
+            for document in documents
+        }
+
+        evidence = []
+
+        for item in result.evidence:
+
+            if item.source_id not in valid_source_ids:
+                print(
+                    "[ResearchPilot] Ignoring evidence with "
+                    f"unknown source_id: {item.source_id}"
+                )
+                continue
+
+            evidence.append(
+                {
+                    "id": str(uuid4()),
+                    "source_id": item.source_id,
+                    "claim": item.claim,
+                    "evidence_text": item.evidence_text,
+                    "confidence": item.confidence,
+                }
             )
 
-            evidence.id = str(uuid.uuid4())
-            evidence.source_id = source_id
+        print(
+            "[ResearchPilot] Evidence extraction completed. "
+            f"Extracted {len(evidence)} evidence items."
+        )
 
-            new_evidence.append(
-                evidence.model_dump()
-            )
+        return {
+            "evidence": evidence,
+            "errors": errors,
+        }
 
-            processed_source_ids.add(source_id)
+    except Exception as exc:
+        error_message = (
+            f"Evidence extraction failed: {exc}"
+        )
 
-        except Exception as exc:
+        print(
+            f"[ResearchPilot] {error_message}"
+        )
 
-            error_message = (
-                f"Evidence extraction failed for "
-                f"{document['url']}: {exc}"
-            )
+        errors.append(error_message)
 
-            errors.append(error_message)
-
-            print(error_message)
-
-    return {
-        **state,
-        "evidence": existing_evidence + new_evidence,
-        "errors": errors,
-    }
+        raise

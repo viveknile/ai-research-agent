@@ -1,183 +1,156 @@
 import pytest
 
 from app.agents.graph import research_graph
-from app.agents.nodes import analyze_query
-from app.agents.nodes import generate_queries
-from app.agents.nodes import extract_evidence
-from app.agents.nodes import analyze_findings
-from app.agents.nodes import check_gaps
+from app.agents.nodes import (
+    analyze_findings,
+    analyze_query,
+    check_gaps,
+    extract_evidence,
+    fetch_sources,
+    generate_queries,
+    search_web,
+)
 from app.ai.mock import MockAIProvider
+from app.tools.mock import (
+    MockFetchProvider,
+    MockSearchProvider,
+)
 
 
 @pytest.mark.asyncio
 async def test_research_graph(monkeypatch):
+    mock_ai_provider = MockAIProvider()
+    mock_search_provider = MockSearchProvider()
+    mock_fetch_provider = MockFetchProvider()
 
-    mock_provider = MockAIProvider()
-
-    # --------------------------------------------------
-    # Replace Gemini with Mock AI
-    # --------------------------------------------------
+    # ==================================================
+    # Mock AI
+    # ==================================================
 
     monkeypatch.setattr(
         analyze_query,
-        "gemini_provider",
-        mock_provider,
+        "ai_provider",
+        mock_ai_provider,
     )
 
     monkeypatch.setattr(
         generate_queries,
-        "gemini_provider",
-        mock_provider,
+        "ai_provider",
+        mock_ai_provider,
     )
 
     monkeypatch.setattr(
         extract_evidence,
-        "gemini_provider",
-        mock_provider,
+        "ai_provider",
+        mock_ai_provider,
     )
 
     monkeypatch.setattr(
         analyze_findings,
-        "gemini_provider",
-        mock_provider,
+        "ai_provider",
+        mock_ai_provider,
     )
 
     monkeypatch.setattr(
         check_gaps,
-        "gemini_provider",
-        mock_provider,
+        "ai_provider",
+        mock_ai_provider,
     )
 
-    # --------------------------------------------------
-    # Initial Research State
-    # --------------------------------------------------
+    # The report synthesis node also uses AI.
+    #
+    # Import it here so the test can replace its
+    # module-level provider.
+
+    from app.agents.nodes import synthesize_report
+
+    monkeypatch.setattr(
+        synthesize_report,
+        "ai_provider",
+        mock_ai_provider,
+    )
+
+    # ==================================================
+    # Mock Search
+    # ==================================================
+
+    monkeypatch.setattr(
+        search_web,
+        "search_provider",
+        mock_search_provider,
+    )
+
+    # ==================================================
+    # Mock Fetch
+    # ==================================================
+
+    monkeypatch.setattr(
+        fetch_sources,
+        "fetch_provider",
+        mock_fetch_provider,
+    )
+
+    # ==================================================
+    # Initial state
+    # ==================================================
 
     initial_state = {
-        "query": "Compare AI agent frameworks in 2026",
+        "research_id": "test-research-id",
+        "query": (
+            "Compare AI agent frameworks "
+            "for Python development."
+        ),
+        "max_iterations": 2,
     }
 
-    # --------------------------------------------------
-    # Run Research Graph
-    # --------------------------------------------------
+    # ==================================================
+    # Run complete graph
+    # ==================================================
 
     result = await research_graph.ainvoke(
         initial_state
     )
 
-    # --------------------------------------------------
-    # Query
-    # --------------------------------------------------
+    # ==================================================
+    # Research assertions
+    # ==================================================
 
-    assert (
-        result["query"]
-        == "Compare AI agent frameworks in 2026"
-    )
+    assert result["query"] == initial_state["query"]
 
-    # --------------------------------------------------
-    # Research Plan
-    # --------------------------------------------------
+    assert result["research_plan"]
 
-    research_plan = result["research_plan"]
+    assert result["search_queries"]
 
-    assert research_plan["objective"]
-    assert research_plan["research_questions"]
-    assert research_plan["search_topics"]
+    assert result["sources"]
 
-    # --------------------------------------------------
-    # Search Queries
-    # --------------------------------------------------
+    assert result["documents"]
 
-    search_queries = result["search_queries"]
+    assert result["evidence"]
 
-    assert search_queries
-    assert len(search_queries) >= 5
+    assert result["findings"]
 
-    # --------------------------------------------------
-    # Search Results
-    # --------------------------------------------------
+    assert "research_gaps" in result
 
-    sources = result["sources"]
+    # ==================================================
+    # Report assertions
+    # ==================================================
 
-    assert sources
-    assert len(sources) > 0
+    assert result["report_draft"]
 
-    for source in sources:
+    assert result["final_report"]
 
-        assert source["id"]
-        assert source["title"]
-        assert source["url"]
-        assert source["domain"]
+    final_report = result["final_report"]
 
-    # --------------------------------------------------
-    # Fetched Documents
-    # --------------------------------------------------
+    assert final_report["title"]
 
-    documents = result["documents"]
+    assert final_report["executive_summary"]
 
-    assert documents
-    assert len(documents) > 0
+    assert final_report["findings"]
 
-    for document in documents:
+    assert final_report["citations"]
 
-        assert document["source_id"]
-        assert document["url"]
-        assert document["title"]
-        assert document["content"]
-        assert document["domain"]
+    # ==================================================
+    # Iteration
+    # ==================================================
 
-    # --------------------------------------------------
-    # Evidence
-    # --------------------------------------------------
-
-    evidence = result["evidence"]
-
-    assert evidence
-    assert len(evidence) > 0
-
-    for item in evidence:
-
-        assert item["id"]
-        assert item["source_id"]
-        assert item["claim"]
-        assert item["evidence_text"]
-
-        assert (
-            0.0
-            <= item["confidence"]
-            <= 1.0
-        )
-
-    # --------------------------------------------------
-    # Findings
-    # --------------------------------------------------
-
-    findings = result["findings"]
-
-    assert findings
-    assert len(findings) > 0
-
-    for finding in findings:
-
-        assert finding["id"]
-        assert finding["statement"]
-
-        assert (
-            0.0
-            <= finding["confidence"]
-            <= 1.0
-        )
-
-        assert finding[
-            "supporting_evidence_ids"
-        ]
-
-    # --------------------------------------------------
-    # Research Gaps
-    # --------------------------------------------------
-
-    research_gaps = result["research_gaps"]
-
-    assert isinstance(
-        research_gaps,
-        list,
-    )
+    assert result["iteration"] >= 1

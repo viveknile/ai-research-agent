@@ -1,48 +1,122 @@
-
 from app.agents.state import ResearchState
-from app.ai.gemini import GeminiProvider
+from app.ai.provider import get_ai_provider
 from app.schemas.research import SearchQueries
 
 
-gemini_provider = GeminiProvider()
+ai_provider = get_ai_provider()
+
+MAX_SEARCH_QUERIES = 8
 
 
-async def generate_queries(state: ResearchState) -> ResearchState:
-    research_plan = state["research_plan"]
+async def generate_queries(state: ResearchState) -> dict:
+    query = state["query"]
+    research_plan = state.get("research_plan", {})
+    research_gaps = state.get("research_gaps", [])
+    iteration = state.get("iteration", 0)
 
-    prompt = f"""
-You are a web research query generation assistant.
+    print(
+        "[ResearchPilot] Generating search queries "
+        f"(iteration {iteration + 1})..."
+    )
 
-Based on the following research plan, generate search queries
-that will help us find reliable and diverse information on the web.
+    if research_gaps:
+        gap_text = "\n".join(
+            f"- {gap}"
+            for gap in research_gaps
+        )
 
-Research plan:
+        prompt = f"""
+You are a research search-query generator.
 
-Objective:
-{research_plan["objective"]}
+The original research question is:
 
-Research questions:
-{research_plan["research_questions"]}
+{query}
 
-Search topics:
-{research_plan["search_topics"]}
+The research plan is:
 
-Generate 5 to 8 focused search queries.
+{research_plan}
+
+The current research round is:
+
+{iteration + 1}
+
+The previous research identified these gaps:
+
+{gap_text}
+
+Generate targeted follow-up web search queries that specifically
+address these research gaps.
 
 Requirements:
-- Each query should investigate a useful aspect of the research.
-- Avoid duplicate or nearly identical queries.
-- Cover different aspects of the research.
-- Prefer specific queries over vague queries.
-- Do not include explanations, only the search queries.
+
+1. Generate no more than {MAX_SEARCH_QUERIES} queries.
+2. Avoid duplicate queries.
+3. Avoid repeating information already researched.
+4. Focus on the most important missing information.
+5. Prefer specific queries over broad queries.
+
+Return only actual JSON data matching the requested schema.
+Do not return the schema itself.
 """
 
-    search_queries = await gemini_provider.generate_structured(
+    else:
+        prompt = f"""
+You are a research search-query generator.
+
+The original research question is:
+
+{query}
+
+The research plan is:
+
+{research_plan}
+
+Generate focused web search queries that will help answer
+the research question.
+
+Requirements:
+
+1. Generate no more than {MAX_SEARCH_QUERIES} queries.
+2. Cover the most important concepts.
+3. Cover important technologies or entities.
+4. Include comparisons where relevant.
+5. Include current information where relevant.
+6. Include practical or real-world considerations.
+7. Avoid duplicate queries.
+8. Avoid overly broad queries.
+9. Prioritize quality over quantity.
+
+Return only actual JSON data matching the requested schema.
+Do not return the schema itself.
+"""
+
+    result = await ai_provider.generate_structured(
         prompt,
         SearchQueries,
     )
 
+    queries = []
+
+    for query_item in result.queries:
+        cleaned_query = query_item.strip()
+
+        if not cleaned_query:
+            continue
+
+        if cleaned_query in queries:
+            continue
+
+        queries.append(cleaned_query)
+
+        if len(queries) >= MAX_SEARCH_QUERIES:
+            break
+
+    print(
+        "[ResearchPilot] Generated "
+        f"{len(queries)} search queries."
+    )
+
     return {
-        **state,
-        "search_queries": search_queries.queries,
+        "search_queries": queries,
+        "iteration": iteration + 1,
     }
