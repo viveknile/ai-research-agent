@@ -44,124 +44,137 @@ export default function ResearchProgress({
   currentStep,
   currentDescription,
 }: ResearchProgressProps) {
+  const safeProgress = Math.min(
+    100,
+    Math.max(0, progress)
+  );
+
+  const safeStep = Math.min(
+    steps.length,
+    Math.max(1, step)
+  );
+
   return (
-    <div className="w-full max-w-2xl mx-auto">
+    <main className="min-h-screen overflow-x-hidden bg-slate-950 px-4 py-8 sm:px-6 sm:py-12">
+      <div className="mx-auto w-full max-w-2xl">
 
-      <div className="text-center mb-10">
+        {/* Header */}
 
-        <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-indigo-500/30 bg-indigo-500/10">
+        <div className="mb-8 text-center sm:mb-10">
+          <div className="mb-3 text-sm font-medium text-indigo-400">
+            ResearchPilot
+          </div>
 
-          <div className="h-5 w-5 animate-spin rounded-full border-2 border-indigo-400/30 border-t-indigo-400" />
+          <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
+            Research in progress
+          </h1>
+
+          <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-400 sm:text-base">
+            Your research agent is investigating the topic.
+          </p>
+        </div>
+
+        {/* Progress Card */}
+
+        <div className="rounded-3xl border border-white/10 bg-slate-900/70 p-5 shadow-2xl sm:p-7">
+
+          {/* Current Step */}
+
+          <div className="mb-6">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+
+              <div className="min-w-0">
+                <p className="break-words text-base font-semibold text-white sm:text-lg">
+                  {currentStep}
+                </p>
+
+                <p className="mt-1 break-words text-sm leading-6 text-slate-400">
+                  {currentDescription}
+                </p>
+              </div>
+
+              <span className="shrink-0 text-sm font-medium text-indigo-300">
+                {Math.round(safeProgress)}%
+              </span>
+
+            </div>
+          </div>
+
+          {/* Progress Bar */}
+
+          <div className="mb-7 h-2 overflow-hidden rounded-full bg-slate-800">
+            <div
+              className="h-full rounded-full bg-indigo-500 transition-all duration-500"
+              style={{
+                width: `${safeProgress}%`,
+              }}
+            />
+          </div>
+
+          {/* Steps */}
+
+          <div className="space-y-4">
+            {steps.map((item, index) => {
+              const stepNumber = index + 1;
+
+              const isCompleted =
+                stepNumber < safeStep;
+
+              const isCurrent =
+                stepNumber === safeStep;
+
+              return (
+                <div
+                  key={item.title}
+                  className="flex items-start gap-3 sm:gap-4"
+                >
+
+                  {/* Step Indicator */}
+
+                  <div
+                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold transition ${
+                      isCompleted
+                        ? "bg-indigo-500 text-white"
+                        : isCurrent
+                          ? "border border-indigo-400/50 bg-indigo-400/10 text-indigo-300"
+                          : "border border-white/10 bg-slate-950 text-slate-600"
+                    }`}
+                  >
+                    {isCompleted ? "✓" : stepNumber}
+                  </div>
+
+                  {/* Step Information */}
+
+                  <div className="min-w-0 flex-1 pt-0.5">
+                    <p
+                      className={`break-words text-sm font-medium ${
+                        isCurrent || isCompleted
+                          ? "text-slate-200"
+                          : "text-slate-500"
+                      }`}
+                    >
+                      {item.title}
+                    </p>
+
+                    <p className="mt-0.5 break-words text-xs leading-5 text-slate-600">
+                      {item.description}
+                    </p>
+                  </div>
+
+                </div>
+              );
+            })}
+          </div>
 
         </div>
 
-        <h1 className="text-3xl font-bold text-white">
-          {currentStep || "Researching..."}
-        </h1>
+        {/* Step Counter */}
 
-        <p className="mt-3 text-sm text-slate-400">
-          {currentDescription ||
-            "ResearchPilot is investigating your question across multiple sources."}
+        <p className="mt-6 text-center text-xs text-slate-600">
+          Step {safeStep} of {steps.length}
         </p>
 
       </div>
-
-      <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-7 shadow-2xl">
-
-        <div className="mb-7">
-
-          <div className="mb-3 flex items-center justify-between">
-
-            <span className="text-xs font-medium text-slate-400">
-              Research progress
-            </span>
-
-            <span className="text-xs text-slate-500">
-              {progress}%
-            </span>
-
-          </div>
-
-          <div className="h-1.5 overflow-hidden rounded-full bg-slate-800">
-
-            <div
-              className="h-full rounded-full bg-indigo-400 transition-all duration-700 ease-out"
-              style={{
-                width: `${Math.min(
-                  Math.max(progress, 0),
-                  100,
-                )}%`,
-              }}
-            />
-
-          </div>
-
-        </div>
-
-        <div className="space-y-5">
-
-          {steps.map((item, index) => {
-
-            const stepNumber = index + 1;
-
-            const completed =
-              stepNumber < step;
-
-            const active =
-              stepNumber === step;
-
-            return (
-              <div
-                key={item.title}
-                className="flex items-start gap-4"
-              >
-
-                <div
-                  className={[
-                    "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-xs transition-all",
-                    completed
-                      ? "border-emerald-500/60 bg-emerald-500/10 text-emerald-400"
-                      : active
-                        ? "border-indigo-400/60 bg-indigo-500/10 text-indigo-300"
-                        : "border-slate-700 bg-slate-900 text-slate-600",
-                  ].join(" ")}
-                >
-                  {completed ? "✓" : active ? "•" : ""}
-                </div>
-
-                <div className="min-w-0">
-
-                  <p
-                    className={[
-                      "text-sm font-medium",
-                      completed || active
-                        ? "text-white"
-                        : "text-slate-600",
-                    ].join(" ")}
-                  >
-                    {item.title}
-                  </p>
-
-                  <p
-                    className={[
-                      "mt-1 text-xs",
-                      completed || active
-                        ? "text-slate-500"
-                        : "text-slate-700",
-                    ].join(" ")}
-                  >
-                    {item.description}
-                  </p>
-
-                </div>
-
-              </div>
-            );
-          })}
-
-        </div>
-
-      </div>
-    </div>
+    </main>
   );
 }

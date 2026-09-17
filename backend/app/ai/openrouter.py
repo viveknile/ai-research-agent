@@ -20,11 +20,7 @@ class OpenRouterProvider(AIProvider):
             max_retries=0,
         )
 
-    async def generate(
-        self,
-        prompt: str,
-    ) -> str:
-
+    async def generate(self, prompt: str) -> str:
         print(
             "[ResearchPilot] OpenRouter: "
             "starting request..."
@@ -62,16 +58,20 @@ class OpenRouterProvider(AIProvider):
 
         first_content = "No response"
         retry_content = "No response"
+        first_error: Exception | None = None
 
         # ====================================================
         # First attempt
         # ====================================================
 
         try:
+            print(
+                "[ResearchPilot] "
+                f"{schema.__name__}: attempt 1/1"
+            )
 
-            response = await self._invoke_with_retry(
-                structured_prompt,
-                schema.__name__,
+            response = await self.model.ainvoke(
+                structured_prompt
             )
 
             first_content = self._extract_text(
@@ -84,22 +84,16 @@ class OpenRouterProvider(AIProvider):
             )
             print(first_content)
 
-            data = self._parse_json(
-                first_content
-            )
+            data = self._parse_json(first_content)
 
             data = self._normalize_data(
                 data,
                 schema,
             )
 
-            self._validate_not_schema(
-                data
-            )
+            self._validate_not_schema(data)
 
-            result = schema.model_validate(
-                data
-            )
+            result = schema.model_validate(data)
 
             print(
                 "[ResearchPilot] OpenRouter structured "
@@ -108,16 +102,29 @@ class OpenRouterProvider(AIProvider):
 
             return result
 
-        except Exception as first_error:
+        except Exception as exc:
+            first_error = exc
 
             print(
                 "[ResearchPilot] Structured request failed "
-                f"for {schema.__name__}: {first_error}"
+                f"for {schema.__name__}: {exc}"
             )
 
         # ====================================================
         # Retry
         # ====================================================
+
+        # Do not retry rate-limit errors.
+        if self._is_rate_limit_error(first_error):
+            print(
+                "[ResearchPilot] Rate limit detected. "
+                "Skipping retry."
+            )
+
+            raise ValueError(
+                f"OpenRouter rate limit reached for "
+                f"{schema.__name__}: {first_error}"
+            ) from first_error
 
         print(
             "[ResearchPilot] Retrying structured request..."
@@ -130,10 +137,13 @@ class OpenRouterProvider(AIProvider):
         )
 
         try:
+            print(
+                "[ResearchPilot] "
+                f"{schema.__name__}: retry attempt 1/1"
+            )
 
-            response = await self._invoke_with_retry(
-                retry_prompt,
-                f"{schema.__name__} retry",
+            response = await self.model.ainvoke(
+                retry_prompt
             )
 
             retry_content = self._extract_text(
@@ -171,7 +181,6 @@ class OpenRouterProvider(AIProvider):
             return result
 
         except Exception as second_error:
-
             print(
                 "[ResearchPilot] Retry failed for "
                 f"{schema.__name__}: {second_error}"
@@ -187,50 +196,31 @@ class OpenRouterProvider(AIProvider):
             ) from second_error
 
     # ========================================================
-    # OpenRouter Request
+    # Rate Limit Detection
     # ========================================================
 
-    async def _invoke_with_retry(
-        self,
-        prompt: str,
-        request_name: str,
-    ):
-        last_error: Exception | None = None
+    @staticmethod
+    def _is_rate_limit_error(
+        error: Exception | None,
+    ) -> bool:
 
-        for attempt in range(2):
+        if error is None:
+            return False
 
-            try:
+        error_text = str(error).lower()
 
-                print(
-                    "[ResearchPilot] "
-                    f"{request_name}: "
-                    f"attempt {attempt + 1}/2"
-                )
+        rate_limit_indicators = [
+            "429",
+            "rate limit",
+            "rate_limit",
+            "too many requests",
+            "free-models-per-day",
+            "quota",
+        ]
 
-                response = await self.model.ainvoke(
-                    prompt
-                )
-
-                return response
-
-            except Exception as exc:
-
-                last_error = exc
-
-                print(
-                    "[ResearchPilot] "
-                    f"{request_name}: "
-                    f"attempt {attempt + 1} failed: "
-                    f"{exc}"
-                )
-
-                if attempt == 0:
-
-                    # Small delay before retrying.
-                    await asyncio.sleep(2)
-
-        raise last_error or RuntimeError(
-            "OpenRouter request failed."
+        return any(
+            indicator in error_text
+            for indicator in rate_limit_indicators
         )
 
     # ========================================================
@@ -306,9 +296,9 @@ EXPECTED JSON STRUCTURE:
 
 {schema_json}
 
-The previous attempt failed validation.
+The previous attempt failed.
 
-Validation/request error:
+Previous error:
 
 {error}
 
@@ -388,7 +378,6 @@ Return the JSON object now.
         content = content.strip()
 
         if not content:
-
             raise ValueError(
                 "OpenRouter returned an empty response."
             )
@@ -417,7 +406,6 @@ Return the JSON object now.
             )
 
             if not isinstance(data, dict):
-
                 raise ValueError(
                     "OpenRouter returned JSON, "
                     "but it was not a JSON object."
@@ -443,7 +431,6 @@ Return the JSON object now.
             )
 
             if not isinstance(data, dict):
-
                 raise ValueError(
                     "Extracted JSON is not an object."
                 )
@@ -497,18 +484,6 @@ Return the JSON object now.
 
         # ----------------------------------------------------
         # ReportDraft normalization
-        #
-        # Some free models return:
-        #
-        # "statement": {
-        #     "title": "...",
-        #     "confidence": 0.9,
-        #     "evidence_ids": [...]
-        # }
-        #
-        # instead of:
-        #
-        # "statement": "..."
         # ----------------------------------------------------
 
         if schema.__name__ == "ReportDraft":

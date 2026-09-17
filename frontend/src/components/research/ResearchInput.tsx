@@ -50,32 +50,32 @@ export default function ResearchInput({
   };
 
   return (
-    <section className="relative flex min-h-screen items-center justify-center overflow-hidden px-6 py-16">
+    <section className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-10 sm:px-6 sm:py-16">
       {/* Background decoration */}
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute left-1/2 top-[-180px] h-[420px] w-[420px] -translate-x-1/2 rounded-full bg-indigo-500/10 blur-3xl" />
+        <div className="absolute left-1/2 top-[-180px] h-[300px] w-[300px] -translate-x-1/2 rounded-full bg-indigo-500/10 blur-3xl sm:h-[420px] sm:w-[420px]" />
 
-        <div className="absolute bottom-[-160px] left-[-100px] h-[350px] w-[350px] rounded-full bg-purple-500/10 blur-3xl" />
+        <div className="absolute bottom-[-160px] left-[-100px] h-[250px] w-[250px] rounded-full bg-purple-500/10 blur-3xl sm:h-[350px] sm:w-[350px]" />
 
-        <div className="absolute right-[-100px] top-1/3 h-[300px] w-[300px] rounded-full bg-blue-500/10 blur-3xl" />
+        <div className="absolute right-[-100px] top-1/3 h-[220px] w-[220px] rounded-full bg-blue-500/10 blur-3xl sm:h-[300px] sm:w-[300px]" />
       </div>
 
       <div className="relative z-10 w-full max-w-3xl">
         {/* Header */}
-        <div className="mb-10 text-center">
-          <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-300 backdrop-blur">
+        <div className="mb-7 text-center sm:mb-10">
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-slate-300 backdrop-blur sm:mb-5 sm:px-4 sm:py-2 sm:text-sm">
             <span className="h-2 w-2 rounded-full bg-emerald-400" />
             Autonomous AI Research
           </div>
 
-          <h1 className="text-5xl font-semibold tracking-tight text-white sm:text-6xl">
+          <h1 className="text-4xl font-semibold tracking-tight text-white sm:text-6xl">
             Research
             <span className="bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
               Pilot
             </span>
           </h1>
 
-          <p className="mx-auto mt-5 max-w-xl text-base leading-7 text-slate-400 sm:text-lg">
+          <p className="mx-auto mt-4 max-w-xl px-2 text-sm leading-6 text-slate-400 sm:mt-5 sm:px-0 sm:text-lg sm:leading-7">
             Ask a question. ResearchPilot searches the web,
             analyzes sources, cross-checks evidence, and builds a
             cited research report.
@@ -85,7 +85,7 @@ export default function ResearchInput({
         {/* Research form */}
         <form
           onSubmit={handleSubmit}
-          className="rounded-3xl border border-white/10 bg-white/[0.04] p-5 shadow-2xl shadow-black/20 backdrop-blur-xl sm:p-7"
+          className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 shadow-2xl shadow-black/20 backdrop-blur-xl sm:rounded-3xl sm:p-7"
         >
           <label
             htmlFor="research-query"
@@ -104,17 +104,17 @@ export default function ResearchInput({
             rows={6}
             maxLength={1000}
             disabled={isSubmitting}
-            className="w-full resize-none rounded-2xl border border-white/10 bg-slate-950/60 px-5 py-4 text-sm leading-6 text-white outline-none transition placeholder:text-slate-600 focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-400/10 disabled:cursor-not-allowed disabled:opacity-60"
+            className="w-full resize-none rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm leading-6 text-white outline-none transition placeholder:text-slate-600 focus:border-indigo-400/50 focus:ring-2 focus:ring-indigo-400/10 disabled:cursor-not-allowed disabled:opacity-60 sm:rounded-2xl sm:px-5 sm:py-4"
           />
 
-          <div className="mt-3 flex justify-end">
+          <div className="mt-2 flex justify-end sm:mt-3">
             <span className="text-xs text-slate-600">
               {query.length}/1000
             </span>
           </div>
 
           {/* Research depth */}
-          <div className="mt-7">
+          <div className="mt-6 sm:mt-7">
             <p className="mb-3 text-sm font-medium text-slate-200">
               Research depth
             </p>
@@ -148,7 +148,7 @@ export default function ResearchInput({
                     onClick={() =>
                       setDepth(option.value)
                     }
-                    className={`rounded-2xl border p-4 text-left transition ${
+                    className={`rounded-xl border p-4 text-left transition sm:rounded-2xl ${
                       selected
                         ? "border-indigo-400/50 bg-indigo-500/10"
                         : "border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04]"
@@ -156,7 +156,7 @@ export default function ResearchInput({
                   >
                     <div className="flex items-center gap-3">
                       <span
-                        className={`flex h-5 w-5 items-center justify-center rounded-full border ${
+                        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
                           selected
                             ? "border-indigo-400"
                             : "border-slate-600"
@@ -188,7 +188,7 @@ export default function ResearchInput({
               isSubmitting ||
               query.trim().length < 5
             }
-            className="mt-7 flex w-full items-center justify-center gap-2 rounded-2xl bg-indigo-500 px-5 py-4 text-sm font-semibold text-white transition hover:bg-indigo-400 disabled:cursor-not-allowed disabled:opacity-40"
+            className="mt-6 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-indigo-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-400 disabled:cursor-not-allowed disabled:opacity-40 sm:mt-7 sm:rounded-2xl sm:py-4"
           >
             {isSubmitting
               ? "Starting Research..."
@@ -211,13 +211,13 @@ export default function ResearchInput({
 
           {/* Error */}
           {error && (
-            <div className="mt-4 rounded-xl border border-red-400/20 bg-red-400/5 px-4 py-3 text-sm text-red-300">
+            <div className="mt-4 break-words rounded-xl border border-red-400/20 bg-red-400/5 px-4 py-3 text-sm text-red-300">
               {error}
             </div>
           )}
         </form>
 
-        <p className="mt-5 text-center text-xs text-slate-600">
+        <p className="mt-4 px-4 text-center text-xs text-slate-600 sm:mt-5 sm:px-0">
           ResearchPilot uses multiple sources to build
           evidence-backed answers.
         </p>
